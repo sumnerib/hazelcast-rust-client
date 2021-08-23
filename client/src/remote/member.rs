@@ -4,6 +4,7 @@ use std::{
 };
 
 use derive_more::Display;
+use uuid::Uuid;
 
 use crate::{
     messaging::{Address, Request, Response},
@@ -32,7 +33,7 @@ impl Member {
         };
         let sender = Sender::new(channel);
 
-        let request = AuthenticationRequest::new(username, password, CLIENT_TYPE, PROTOCOL_VERSION, CLIENT_VERSION);
+        let request = AuthenticationRequest::new(PROTOCOL_VERSION, username, password, CLIENT_TYPE, CLIENT_VERSION);
         let response: AuthenticationResponse = sender.send(request).await?;
         match AuthenticationResponse::status(&response) {
             AuthenticationStatus::Authenticated => Ok(Member {

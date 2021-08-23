@@ -1,6 +1,9 @@
+mod util;
+
 use std::{convert::TryInto, mem};
 
 use bytes::{Buf, BufMut, Bytes, BytesMut};
+use uuid::Uuid;
 
 pub(crate) trait Writer {
     fn length(&self) -> usize;
@@ -23,6 +26,8 @@ pub(crate) trait Writeable {
 
     fn write_u64(&mut self, value: u64);
 
+    fn write_u128(&mut self, value: u128);
+
     fn write_slice(&mut self, value: &[u8]);
 }
 
@@ -44,6 +49,8 @@ pub(crate) trait Readable {
     fn read_i64(&mut self) -> i64;
 
     fn read_u64(&mut self) -> u64;
+
+    fn read_u128(&mut self) -> u128;
 
     fn read_slice(&mut self, len: usize) -> Bytes;
 
@@ -148,8 +155,8 @@ impl Writer for String {
     }
 
     fn write_to(&self, writeable: &mut dyn Writeable) {
-        let len: u32 = self.len().try_into().expect("unable to convert!");
-        len.write_to(writeable);
+        // let len: u32 = self.len().try_into().expect("unable to convert!");
+        // len.write_to(writeable);
         self.as_bytes().write_to(writeable);
     }
 }
@@ -181,6 +188,16 @@ impl<T: Writer> Writer for &[T] {
         for item in self.iter() {
             item.write_to(writeable);
         }
+    }
+}
+
+impl Writer for Uuid {
+    fn length(&self) -> usize {
+        mem::size_of::<u128>()
+    }
+
+    fn write_to(&self, writeable: &mut dyn Writeable) {
+        writeable.write_u128(self.as_u128());
     }
 }
 
@@ -256,6 +273,12 @@ impl<T: Reader> Reader for Vec<T> {
     }
 }
 
+impl Reader for Uuid {
+    fn read_from(readable: &mut dyn Readable) -> Self {
+        Uuid::from_u128(readable.read_u128())
+    }
+}
+
 impl Writeable for BytesMut {
     fn write_bool(&mut self, value: bool) {
         if value {
@@ -287,6 +310,10 @@ impl Writeable for BytesMut {
 
     fn write_u64(&mut self, value: u64) {
         self.put_u64_le(value);
+    }
+
+    fn write_u128(&mut self, value: u128) {
+        self.put_u128_le(value);
     }
 
     fn write_slice(&mut self, value: &[u8]) {
@@ -321,6 +348,10 @@ impl Readable for Bytes {
 
     fn read_u64(&mut self) -> u64 {
         self.get_u64_le()
+    }
+
+    fn read_u128(&mut self) -> u128 {
+        self.get_u128_le()
     }
 
     fn read_slice(&mut self, len: usize) -> Bytes {
@@ -464,5 +495,15 @@ mod tests {
 
         let readable = &mut writeable.to_bytes();
         assert_eq!(Vec::<u32>::read_from(readable), vec!(1u32));
+    }
+
+    #[test]
+    fn should_write_and_read_uuid() {
+        let writeable = &mut BytesMut::new();
+        let uuid = Uuid::new_v4();
+        uuid.write_to(writeable);
+
+        let readable = &mut writeable.to_bytes();
+        assert_eq!(Uuid::read_from(readable), uuid);
     }
 }

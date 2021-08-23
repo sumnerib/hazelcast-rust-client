@@ -10,7 +10,7 @@ pub(crate) mod ping;
 pub(crate) mod pn_counter;
 
 pub(crate) trait Request: Writer {
-    fn r#type() -> u16;
+    fn r#type() -> u32;
 
     fn partition_id(&self) -> i32 {
         -1
@@ -18,7 +18,7 @@ pub(crate) trait Request: Writer {
 }
 
 pub(crate) trait Response: Reader {
-    fn r#type() -> u16;
+    fn r#type() -> u32;
 }
 
 #[derive(Writer, Reader, Eq, PartialEq, Hash, Display, Debug, Clone)]

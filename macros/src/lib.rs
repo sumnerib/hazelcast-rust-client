@@ -26,7 +26,7 @@ fn request_body(input: &DeriveInput) -> TokenStream {
 
     quote! {
         impl #impl_generics crate::messaging::Request for #name #ty_generics #where_clause {
-            fn r#type() -> u16 {
+            fn r#type() -> u32 {
                 #type_value
             }
         }
@@ -124,7 +124,7 @@ fn response_body(input: &DeriveInput) -> TokenStream {
 
     quote! {
         impl #impl_generics crate::messaging::Response for #name #ty_generics #where_clause {
-            fn r#type() -> u16 {
+            fn r#type() -> u32 {
                  #type_value
             }
         }
