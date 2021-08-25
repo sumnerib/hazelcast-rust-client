@@ -6,7 +6,7 @@ use uuid::Uuid;
 use bytes::{Bytes, BytesMut};
 use crate::remote::message::{Frame, DEFAULT_FLAGS};
 use core::mem;
-use crate::codec::Writer;
+use crate::codec::{Writer, util};
 use std::ops::Deref;
 
 const REQUEST_TYPE: u32 = 256;
@@ -50,23 +50,24 @@ impl<'a> AuthenticationRequest<'a> {
 pub(crate) fn encode_request(cluster_name: String, username: Option<String>,
                              password: Option<String>, uuid: Uuid, client_type: String,
                              serialization_version: u8, client_version: String,
-                             client_name: String, mut initial_frame: Frame) -> Message {
-    use crate::codec::Writer;
+                             client_name: String, labels: Vec<String>,
+                             mut initial_frame: Frame) -> Message {
 
     let mut fields =
-        BytesMut::with_capacity(mem::size_of::<Uuid>() + 1);
-
+        BytesMut::with_capacity(mem::size_of::<i32>() + mem::size_of::<Uuid>() + 1);
     let partition_id = -1;
     partition_id.write_to(&mut fields);
     uuid.write_to(&mut fields);
     serialization_version.write_to(&mut fields);
     initial_frame.append_content(fields);
     let mut message = Message::new(initial_frame);
-    let mut cluster_name_bytes =
-        BytesMut::with_capacity(cluster_name.len());
-    cluster_name.write_to(&mut cluster_name_bytes);
-    let cluster_name_frame = cluster_name_bytes.into();
-    message.add(cluster_name_frame);
+    util::encode_string(&mut message, cluster_name);
+    util::encode_nullable(&mut message, username, util::encode_string);
+    util::encode_nullable(&mut message, password, util::encode_string);
+    util::encode_string(&mut message, client_type);
+    util::encode_string(&mut message, client_version);
+    util::encode_string(&mut message, client_name);
+    util::encode_list(&mut message, labels, util::encode_string);
 
     message
 }
@@ -182,11 +183,19 @@ mod tests {
             "dev".to_string(), Some("user".to_string()),
             Some("pass".to_string()), Uuid::new_v4(),
             "rust".to_string(), 1, "5.0".to_string(),
-            "hz_client".to_string(), initial_frame
+            "hz_client".to_string(), vec!["item".to_string()], initial_frame
         );
 
         let mut message_iter = message.iter();
-        let initial_frame = message_iter.next().expect("Empty message!");
-        let cluster_name_frame = message_iter.next().expect("Second frame should be name");
+        message_iter.next().expect("Empty message!");
+        message_iter.next().expect("Second frame should be name!");
+        message_iter.next().expect("Should have username!");
+        message_iter.next().expect("Should have password!");
+        message_iter.next().expect("Should have client_type!");
+        message_iter.next().expect("Should have hz_version!");
+        message_iter.next().expect("Should have client_name!");
+        message_iter.next().expect("Should have begin_data!");
+        message_iter.next().expect("Should have data item!");
+        message_iter.next().expect("Should have end_data!");
     }
 }

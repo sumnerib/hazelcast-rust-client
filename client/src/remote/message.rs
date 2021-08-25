@@ -6,9 +6,9 @@ use std::collections::linked_list::{Iter, IntoIter};
 use crate::codec::Writer;
 
 pub(crate) const DEFAULT_FLAGS: u16 = 0;
-const END_DATA_STRUCTURE_FLAG: u16 = 1 << 11;
-const BEGIN_DATA_STRUCTURE_FLAG: u16 = 1 << 12;
-const IS_NULL_FLAG: u16 = 1 << 10;
+pub(crate) const END_DATA_STRUCTURE_FLAG: u16 = 1 << 11;
+pub(crate) const BEGIN_DATA_STRUCTURE_FLAG: u16 = 1 << 12;
+pub(crate) const IS_NULL_FLAG: u16 = 1 << 10;
 const HEADER_LENGTH: usize = 18;
 
 pub(crate) struct Message { frames: LinkedList<Frame> }
@@ -56,15 +56,15 @@ impl Frame {
         Self::new(content, flags)
     }
 
-    fn is_end_frame(&self) -> bool {
+    pub(crate) fn is_end_frame(&self) -> bool {
         is_flag_set(self.flags, END_DATA_STRUCTURE_FLAG)
     }
 
-    fn is_begin_frame(&self) -> bool {
+    pub(crate) fn is_begin_frame(&self) -> bool {
         is_flag_set(self.flags, BEGIN_DATA_STRUCTURE_FLAG)
     }
 
-    fn is_null_frame(&self) -> bool {
+    pub(crate) fn is_null_frame(&self) -> bool {
         is_flag_set(self.flags, IS_NULL_FLAG)
     }
 }
