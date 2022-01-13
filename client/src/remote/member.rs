@@ -4,6 +4,8 @@ use std::{
 };
 
 use derive_more::Display;
+use crate::remote::message::Message;
+use crate::remote::message::{Frame, DEFAULT_FLAGS};
 use uuid::Uuid;
 
 use crate::{
@@ -14,10 +16,10 @@ use crate::{
 };
 
 #[derive(Display)]
-#[display(fmt = "{} - {:?}", address, owner_id)]
+#[display(fmt = "{} - {:?}", address, member_uuid)]
 pub(in crate::remote) struct Member {
-    id: String,
-    owner_id: String,
+    member_uuid: Uuid,
+    cluster_uuid: Uuid,
     address: Address,
 
     sender: Sender,
@@ -33,12 +35,17 @@ impl Member {
         };
         let sender = Sender::new(channel);
 
-        let request = AuthenticationRequest::new(PROTOCOL_VERSION, username, password, CLIENT_TYPE, CLIENT_VERSION);
+        let request = AuthenticationRequest::new(
+            PROTOCOL_VERSION, "dev".to_string(),
+            Some(username.to_string()), Some(password.to_string()),
+            CLIENT_TYPE.to_string(), CLIENT_VERSION.to_string(),
+            "hz_client".to_string(), vec![]
+        );
         let response: AuthenticationResponse = sender.send(request).await?;
         match AuthenticationResponse::status(&response) {
             AuthenticationStatus::Authenticated => Ok(Member {
-                id: response.id().as_ref().expect("missing id!").clone(),
-                owner_id: response.owner_id().as_ref().expect("missing owner id!").clone(),
+                member_uuid: response.member_uuid,
+                cluster_uuid: response.cluster_id,
                 address: response.address().as_ref().expect("missing address!").clone(),
                 sender,
             }),
@@ -59,7 +66,7 @@ impl Eq for Member {}
 
 impl PartialEq for Member {
     fn eq(&self, other: &Self) -> bool {
-        self.id.eq(&other.id)
+        self.member_uuid.eq(&other.member_uuid)
     }
 }
 

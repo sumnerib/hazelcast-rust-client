@@ -29,6 +29,10 @@ fn request_body(input: &DeriveInput) -> TokenStream {
             fn r#type() -> u32 {
                 #type_value
             }
+
+            fn encoder() -> fn(u64, Self, Frame) -> Message {
+                encode_request
+            }
         }
     }
 }
@@ -108,11 +112,11 @@ pub fn derive_response(input: proc_macro::TokenStream) -> proc_macro::TokenStrea
     let input = parse_macro_input!(input as DeriveInput);
 
     let response_body = response_body(&input);
-    let reader_body = reader_body(&input);
+    // let reader_body = reader_body(&input);
     let expanded = quote! {
         #response_body
 
-        #reader_body
+        // #reader_body
     };
     proc_macro::TokenStream::from(expanded)
 }
@@ -126,6 +130,10 @@ fn response_body(input: &DeriveInput) -> TokenStream {
         impl #impl_generics crate::messaging::Response for #name #ty_generics #where_clause {
             fn r#type() -> u32 {
                  #type_value
+            }
+
+            fn decoder() -> fn(Message) -> Self {
+                decode_response
             }
         }
     }

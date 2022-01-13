@@ -1,4 +1,5 @@
 pub(crate) mod util;
+pub(crate) mod custom;
 
 use std::{convert::TryInto, mem};
 
@@ -53,6 +54,8 @@ pub(crate) trait Readable {
     fn read_u128(&mut self) -> u128;
 
     fn read_slice(&mut self, len: usize) -> Bytes;
+
+    fn to_slice(&mut self) -> Bytes;
 
     fn skip(&mut self, len: usize);
 }
@@ -143,8 +146,8 @@ impl Writer for &str {
     }
 
     fn write_to(&self, writeable: &mut dyn Writeable) {
-        let len: u32 = self.len().try_into().expect("unable to convert!");
-        len.write_to(writeable);
+        // let len: u32 = self.len().try_into().expect("unable to convert!");
+        // len.write_to(writeable);
         self.as_bytes().write_to(writeable);
     }
 }
@@ -201,6 +204,22 @@ impl Writer for Uuid {
     }
 }
 
+impl Writer for Vec<String> {
+    fn length(&self) -> usize {
+        let mut len: usize = 0;
+        for item in self {
+           len += item.length();
+        }
+        len
+    }
+
+    fn write_to(&self, writeable: &mut dyn Writeable) {
+        for item in self {
+            item.write_to(writeable);
+        }
+    }
+}
+
 impl Reader for bool {
     fn read_from(readable: &mut dyn Readable) -> Self {
         readable.read_bool()
@@ -243,14 +262,15 @@ impl Reader for u64 {
     }
 }
 
-impl Reader for String {
-    fn read_from(readable: &mut dyn Readable) -> Self {
-        let len = readable.read_u32().try_into().expect("unable to convert!");
-        std::str::from_utf8(&readable.read_slice(len))
-            .expect("unable to parse utf8 string!")
-            .to_string()
-    }
-}
+// impl Reader for String {
+//     fn read_from(readable: &mut dyn Readable) -> Self {
+//         // let len = readable.read_u32().try_into().expect("unable to convert!");
+//         // std::str::from_utf8(&readable.read_slice(len))
+//         std::str::from_utf8(&readable.to_slice())
+//             .expect("unable to parse utf8 string!")
+//             .to_string()
+//     }
+// }
 
 impl<T: Reader> Reader for Option<T> {
     fn read_from(readable: &mut dyn Readable) -> Self {
@@ -356,6 +376,10 @@ impl Readable for Bytes {
 
     fn read_slice(&mut self, len: usize) -> Bytes {
         self.split_to(len)
+    }
+
+    fn to_slice(&mut self) -> Bytes {
+        self.to_bytes()
     }
 
     fn skip(&mut self, len: usize) {
@@ -468,14 +492,14 @@ mod tests {
         assert_eq!(readable.read_slice(2)[..], [0, 1]);
     }
 
-    #[test]
-    fn should_write_and_read_str() {
-        let writeable = &mut BytesMut::new();
-        "10".write_to(writeable);
-
-        let readable = &mut writeable.to_bytes();
-        assert_eq!(String::read_from(readable), "10");
-    }
+    // #[test]
+    // fn should_write_and_read_str() {
+    //     let writeable = &mut BytesMut::new();
+    //     "10".write_to(writeable);
+    //
+    //     let readable = &mut writeable.to_bytes();
+    //     assert_eq!(String::read_from(readable), "10");
+    // }
 
     #[test]
     fn should_write_and_read_option() {

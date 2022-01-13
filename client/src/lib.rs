@@ -6,7 +6,7 @@ use std::{error, net::SocketAddr, sync::Arc};
 use log::info;
 use thiserror::Error;
 
-pub use protocol::pn_counter::PnCounter;
+// pub use protocol::pn_counter::PnCounter;
 
 use crate::remote::cluster::Cluster;
 
@@ -49,9 +49,9 @@ impl HazelcastClient {
         })
     }
 
-    pub fn pn_counter(&self, name: &str) -> PnCounter {
-        PnCounter::new(name, self.cluster.clone())
-    }
+    // pub fn pn_counter(&self, name: &str) -> PnCounter {
+    //     PnCounter::new(name, self.cluster.clone())
+    // }
 }
 
 type Result<T> = std::result::Result<T, HazelcastClientError>;

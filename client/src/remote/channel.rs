@@ -14,10 +14,14 @@ use tokio::{
 };
 use tokio_util::codec::{FramedRead, FramedWrite, LengthDelimitedCodec};
 
-use crate::remote::{Message, LENGTH_FIELD_ADJUSTMENT, LENGTH_FIELD_LENGTH, LENGTH_FIELD_OFFSET, PROTOCOL_SEQUENCE};
+use crate::remote::{LENGTH_FIELD_ADJUSTMENT, LENGTH_FIELD_LENGTH, LENGTH_FIELD_OFFSET, PROTOCOL_SEQUENCE};
+use crate::remote::message::{Frame, IS_FINAL_FLAG, Message, is_flag_set};
+
+const NO_CORRELATION: u64 = 0;
 
 type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
-type Responder = oneshot::Sender<Message>;
+// type Responder = oneshot::Sender<Message>;
+type Responder = mpsc::UnboundedSender<Frame>;
 
 enum Event {
     Egress((Message, Responder)),
@@ -43,20 +47,44 @@ impl Channel {
             let mut events = Events::new(receiver, reader);
 
             let mut correlations = HashMap::with_capacity(1024);
+            let mut active_correlation = NO_CORRELATION;
             while let Some(event) = events.next().await {
                 match event {
                     Ok(Event::Egress((message, responder))) => {
-                        writer.write(message.payload()).await?;
+                        let mut frames = message.iter().peekable();
+                        while let Some(frame) = frames.next() {
+                            let is_final = match frames.peek() {
+                                Some(_) => false,
+                                None => true,
+                            };
+                            writer.write(frame.payload(is_final)).await?;
+                        }
                         correlations.insert(message.id(), responder);
                     }
-                    Ok(Event::Ingress(mut frame)) => {
-                        let message: Message = frame.to_bytes().into();
-                        match correlations
-                            .remove(&message.id())
-                            .expect("missing correlation!")
-                            .send(message)
-                        {
-                            _ => {} // TODO:
+                    Ok(Event::Ingress(mut frame_bytes)) => {
+                        let frame = Frame::from(
+                            frame_bytes,
+                            active_correlation == NO_CORRELATION
+                        );
+                        if frame.is_first {
+                            active_correlation = frame.id();
+                            match correlations
+                                .get(&active_correlation)
+                                .expect("missing correlation!")
+                                .send(frame) { _ => {} }
+                        } else {
+                            if is_flag_set(frame.flags, IS_FINAL_FLAG) {
+                                match correlations
+                                    .remove(&active_correlation)
+                                    .expect("missing correlation!")
+                                    .send(frame) { _ => {} }
+                                active_correlation = NO_CORRELATION;
+                            } else {
+                                match correlations
+                                    .get(&active_correlation)
+                                    .expect("missing correlation!")
+                                    .send(frame) { _ => {} }
+                            }
                         }
                     }
                     Err(e) => return Err(e),
@@ -69,9 +97,18 @@ impl Channel {
     }
 
     pub(in crate::remote) async fn send(&self, message: Message) -> Result<Message> {
-        let (sender, receiver) = oneshot::channel();
+        let (sender, mut receiver) = mpsc::unbounded_channel();
         self.egress.send((message, sender))?;
-        Ok(receiver.await?)
+        let first_frame = receiver.recv().await.unwrap();
+        let mut message = Message::new(
+            first_frame.id(),
+            first_frame.r#type(),
+            first_frame
+        );
+        while let Some(frame) = receiver.recv().await {
+            message.add(frame);
+        }
+        Ok(message)
     }
 }
 
