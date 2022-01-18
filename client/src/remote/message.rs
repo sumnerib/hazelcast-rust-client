@@ -1,6 +1,6 @@
 use bytes::{Bytes, BytesMut, Buf};
 use std::collections::LinkedList;
-use std::convert::Infallible;
+use std::convert::{Infallible, TryInto};
 use std::cmp::Ordering;
 use std::collections::linked_list::{Iter, IntoIter, IterMut};
 use std::mem;
@@ -20,6 +20,7 @@ pub(crate) const BEGIN_DATA_STRUCTURE_FLAG: u16 = 1 << 12;
 pub(crate) const IS_NULL_FLAG: u16 = 1 << 10;
 
 const FLAGS_LENGTH: usize = 2;
+const FRAME_LENGTH: usize = 4;
 const MESSAGE_TYPE_LENGTH: usize = 4;
 const CORRELATION_ID_LENGTH: usize = 8;
 pub(crate) const FIXED_FIELD_OFFSET: usize = MESSAGE_TYPE_LENGTH
@@ -84,6 +85,36 @@ impl<R: Response> TryFrom<R> for Message {
                 payload,
             ))))
         }
+    }
+}
+
+/// TODO() probably needs to be pushed down to the tokio FramedRead.decoder() layer
+impl From<BytesMut> for Message {
+    fn from(mut message_bytes: BytesMut) -> Self {
+
+        // get the first frame
+        let init_len: usize = message_bytes.get_u32_le().try_into().unwrap();
+        let init_flags = message_bytes.get_u16_le();
+        let message_type = message_bytes.get_u32_le();
+        let id = message_bytes.get_u64_le();
+        let mut init_frame = Frame::initial_frame(init_flags, message_type, id);
+        let init_content = message_bytes.split_to(init_len - HEADER_LENGTH);
+        init_frame.append_content(init_content);
+
+        let mut message = Message::new(id, message_type, init_frame);
+
+        // get remaining
+        while message_bytes.has_remaining() {
+            let len: usize = message_bytes.get_u32_le().try_into().unwrap();
+            let flags = message_bytes.get_u16_le();
+            let content = message_bytes.split_to(len - (FRAME_LENGTH + FLAGS_LENGTH));
+            message.add(Frame::new(content, flags));
+            if is_flag_set(flags, IS_FINAL_FLAG) {
+                break;
+            }
+        }
+
+        message
     }
 }
 
@@ -225,6 +256,46 @@ mod tests {
         expected.append_content(BytesMut::from(partition_id));
         expected.append_content(BytesMut::from("$"));
         assert_eq!(expected, *message.iter().next().expect("should have"));
+    }
+
+    #[test]
+    fn should_convert_to_message_from_bytes() {
+        let mut message_bytes: BytesMut = BytesMut::new();
+        message_bytes.extend_from_slice(&[
+            0x3c, 0x00, 0x00, 0x00, 0x00, 0xc0, 0x01, 0x01,     // first frame
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0xff, 0x49, 0x2e, 
+            0xc0, 0x97, 0x9d, 0xeb, 0x37, 0x13, 0x85, 0xb8,
+            0xc3, 0xd9, 0x54, 0xd6, 0x8b, 0x01, 0x0f, 0x01,
+            0x00, 0x00, 0x00, 0x2e, 0x4f, 0x78, 0x21, 0x19,
+            0x50, 0xcf, 0x85, 0xdd, 0x08, 0xb9, 0xcc, 0xff, 
+            0x94, 0x70, 0x85, 0x00,  
+
+            0x06, 0x00, 0x00, 0x00,0x00, 0x10,                  // Begin data structure frame    
+            
+            0x0a, 0x00, 0x00, 0x00, 0x00, 0x00, 0x45, 0x16,     // data structure init frame
+            0x00, 0x00,
+            
+            0x10, 0x00, 0x00, 0x00, 0x00, 0x00, 0x31, 0x30,     // String field: "10.0.0.191"
+            0x2e, 0x30, 0x2e, 0x30, 0x2e, 0x31, 0x39, 0x31,
+            
+            0x06, 0x00, 0x00, 0x00, 0x00, 0x08,                 // End data structure frame
+            
+            0x12, 0x00, 0x00, 0x00, 0x00, 0x20, 0x35, 0x2e,     // String frame with IS_FINAL marked
+            0x30, 0x2d, 0x53, 0x4e, 0x41, 0x50, 0x53, 0x48, 
+            0x4f, 0x54
+        ]);
+
+        let message: Message = message_bytes.into();
+        let mut message_iter = message.iter();
+        let first = message_iter.next().expect("should have");
+        assert_eq!(0xC000, first.flags);
+        message_iter.next().expect("should have");
+        message_iter.next().expect("should have");
+        message_iter.next().expect("should have");
+        message_iter.next().expect("should have");
+        let last = message_iter.next().expect("should have");
+        assert_eq!(0x2000, last.flags);
     }
 
     #[test]

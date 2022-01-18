@@ -26,7 +26,7 @@ pub(in crate::remote) struct Member {
 }
 
 impl Member {
-    pub(in crate::remote) async fn connect(endpoint: &SocketAddr, username: &str, password: &str) -> Result<Self> {
+    pub(in crate::remote) async fn connect(endpoint: &SocketAddr) -> Result<Self> {
         use crate::messaging::authentication::{AuthenticationRequest, AuthenticationResponse, AuthenticationStatus};
 
         let channel = match Channel::connect(endpoint).await {
@@ -37,7 +37,7 @@ impl Member {
 
         let request = AuthenticationRequest::new(
             PROTOCOL_VERSION, "dev".to_string(),
-            Some(username.to_string()), Some(password.to_string()),
+            None, None,
             CLIENT_TYPE.to_string(), CLIENT_VERSION.to_string(),
             "hz_client".to_string(), vec![]
         );

@@ -31,11 +31,11 @@ pub(crate) struct Cluster {
 }
 
 impl Cluster {
-    pub(crate) async fn init<E>(endpoints: E, username: &str, password: &str) -> Result<Self>
+    pub(crate) async fn init<E>(endpoints: E) -> Result<Self>
     where
         E: IntoIterator<Item = SocketAddr>,
     {
-        let members = Arc::new(Members::from(endpoints, username, password).await?);
+        let members = Arc::new(Members::from(endpoints).await?);
         let pinger = Pinger::ping(members.clone());
         // TODO: reconnector...
 
@@ -125,14 +125,14 @@ struct Members {
 }
 
 impl Members {
-    async fn from<'a, E>(endpoints: E, username: &str, password: &str) -> Result<Self>
+    async fn from<'a, E>(endpoints: E) -> Result<Self>
     where
         E: IntoIterator<Item = SocketAddr>,
     {
         let mut registry = Registry::new();
         for endpoint in endpoints.into_iter().collect::<HashSet<SocketAddr>>() {
             info!("Trying to connect to {} as owner member.", endpoint);
-            match Member::connect(&endpoint, username, password).await {
+            match Member::connect(&endpoint).await {
                 Ok(member) => registry.enable(member.address().clone(), member),
                 Err(e) => error!("Failed to connect to {} - {}", endpoint, e),
             }
