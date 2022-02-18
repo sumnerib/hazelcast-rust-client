@@ -15,7 +15,7 @@ pub(crate) struct Exception {
 
 impl Exception {
 
-    pub(crate) fn read_from(payload: Bytes) -> Self {
+    pub(crate) fn read_from(_payload: Bytes) -> Self {
        Exception {
            code: -1,
            class_name: "".to_string(),
@@ -37,25 +37,25 @@ impl fmt::Display for Exception {
 
 impl fmt::Debug for Exception {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
+        writeln!(
             formatter,
-            "Error (code: {}, cause code: {}, cause class name: {:?}) {{\n",
+            "Error (code: {}, cause code: {}, cause class name: {:?}) {{",
             self.code, self.cause_error_code, self.cause_class_name
         )?;
-        write!(
+        writeln!(
             formatter,
-            "\t{}: {}\n",
+            "\t{}: {}",
             self.class_name,
             self.message.as_deref().unwrap_or("")
         )?;
         for stack_trace_entry in &self.stack_trace {
-            write!(formatter, "\t\t{}\n", stack_trace_entry)?;
+            writeln!(formatter, "\t\t{}", stack_trace_entry)?;
         }
         write!(formatter, "}}")
     }
 }
 
-pub(crate) fn decode_response(message: Message) -> Exception {
+pub(crate) fn decode_response(_message: Message) -> Exception {
     Exception {
         code: -1,
         class_name: "dummy".to_string(),
@@ -96,11 +96,11 @@ impl fmt::Debug for StackTraceEntry {
 
 #[cfg(test)]
 mod tests {
-    use bytes::{Buf, BytesMut};
+    
 
-    use crate::codec::{Reader, Writer};
+    
 
-    use super::*;
+    
 
     // #[test]
     // fn should_read_exception() {

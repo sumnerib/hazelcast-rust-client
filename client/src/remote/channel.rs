@@ -5,7 +5,7 @@ use std::{
     task::{Context, Poll},
 };
 
-use bytes::{Buf, Bytes, BytesMut};
+use bytes::{Bytes, BytesMut};
 use tokio::{
     net::tcp::{ReadHalf, WriteHalf},
     prelude::*,
@@ -15,13 +15,10 @@ use tokio::{
 use tokio_util::codec::{FramedRead, FramedWrite, LengthDelimitedCodec, BytesCodec};
 
 use crate::remote::{LENGTH_FIELD_ADJUSTMENT, LENGTH_FIELD_LENGTH, LENGTH_FIELD_OFFSET, PROTOCOL_SEQUENCE};
-use crate::remote::message::{Frame, IS_FINAL_FLAG, Message, is_flag_set};
-
-const NO_CORRELATION: u64 = 0;
+use crate::remote::message::{Message};
 
 type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 type Responder = oneshot::Sender<Message>;
-// type Responder = mpsc::UnboundedSender<Message>;
 
 enum Event {
     Egress((Message, Responder)),
@@ -52,10 +49,7 @@ impl Channel {
                     Ok(Event::Egress((message, responder))) => {
                         let mut frames = message.iter().peekable();
                         while let Some(frame) = frames.next() {
-                            let is_final = match frames.peek() {
-                                Some(_) => false,
-                                None => true,
-                            };
+                            let is_final = frames.peek().is_none();
                             writer.write(frame.payload(is_final)).await?;
                         }
                         correlations.insert(message.id(), responder);
@@ -65,7 +59,7 @@ impl Channel {
                         match correlations
                             .remove(&message.id())
                             .expect("missing correlation!")
-                            .send(message) { _ => {} }
+                            .send(message) { _ => {} }  // TODO() handle Err
                     }
                     Err(e) => return Err(e),
                 }
@@ -108,18 +102,11 @@ impl<'a> Writer<'a> {
 
 struct Events<'a> {
     egress: mpsc::UnboundedReceiver<(Message, Responder)>,
-    // ingress: FramedRead<ReadHalf<'a>, LengthDelimitedCodec>,
     ingress: FramedRead<ReadHalf<'a>, BytesCodec>,
 }
 
 impl<'a> Events<'a> {
     fn new(messages: mpsc::UnboundedReceiver<(Message, Responder)>, reader: ReadHalf<'a>) -> Self {
-        // let reader = LengthDelimitedCodec::builder()
-        //     .length_field_offset(LENGTH_FIELD_OFFSET)
-        //     .length_field_length(LENGTH_FIELD_LENGTH)
-        //     .length_adjustment(LENGTH_FIELD_ADJUSTMENT)
-        //     .little_endian()
-        //     .new_read(reader);
         let reader = FramedRead::new(reader, BytesCodec::new());
 
         Events {

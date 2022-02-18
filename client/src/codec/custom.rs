@@ -51,7 +51,7 @@ mod test {
     use std::mem;
     use bytes::{BytesMut, Buf};
     use uuid::Uuid;
-    use crate::codec::{util, Writer, Reader};
+    use crate::codec::{Writer, Reader};
     use crate::codec::custom::decode_address;
     use crate::messaging::{Address, ReplicaTimestampEntry};
     use crate::remote::message::{BEGIN_DATA_STRUCTURE_FLAG, END_DATA_STRUCTURE_FLAG, Frame, Message, DEFAULT_FLAGS};

@@ -1,13 +1,13 @@
 use derive_more::Display;
 
-use crate::messaging::{Address, ClusterMember};
+use crate::messaging::{Address};
 use crate::remote::message::Message;
 use uuid::Uuid;
-use bytes::{Buf, Bytes, BytesMut};
+use bytes::{Buf, BytesMut};
 use crate::remote::message::{Frame, FIXED_FIELD_OFFSET};
 use core::mem;
 use crate::codec::{Writer, util, Reader, custom};
-use std::ops::Deref;
+
 
 const REQUEST_TYPE: u32 = 256;
 
@@ -85,7 +85,8 @@ pub(crate) enum AuthenticationStatus {
     NotAllowedInCluster,
 }
 
-const RESPONSE_TYPE: u32 = 257;
+#[cfg(test)]
+const RESPONSE_TYPE: u32 = 0x101;
 
 #[derive(Response, Eq, PartialEq, Debug)]
 #[r#type = 0x101]
@@ -149,10 +150,10 @@ pub(crate) fn decode_response(mut message: Message) -> AuthenticationResponse {
 
 #[cfg(test)]
 mod tests {
-    use bytes::{Buf, BytesMut};
+    use bytes::{BytesMut};
 
     use crate::codec::util::UUID_SIZE;
-    use crate::codec::{Reader, Writer};
+    use crate::codec::{Writer};
     use crate::remote::message::{BEGIN_DATA_STRUCTURE_FLAG, DEFAULT_FLAGS, END_DATA_STRUCTURE_FLAG};
 
     use super::*;

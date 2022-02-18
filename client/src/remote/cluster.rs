@@ -113,9 +113,9 @@ impl Pinger {
         let (handle, receiver) = oneshot::channel();
         tokio::spawn(async move {
             let mut ticks = Ticks::new(PING_INTERVAL, receiver);
-            while let Some(_) = ticks.next().await {
+            while ticks.next().await.is_some() {
                 for member in members.get_all().await {
-                    if let Err(_) = member.send::<PingRequest, PingResponse>(PingRequest::new()).await {
+                    if member.send::<PingRequest, PingResponse>(PingRequest::new()).await.is_err() {
                         error!("Pinging {} failed.", member);
                         members.disable(&*member).await
                     }
@@ -223,9 +223,7 @@ where
             .map(|i| self.enabled.remove(i));
         if let Some(key) = self
             .enabled_by_key
-            .iter()
-            .filter(|(_, v)| ***v == *value)
-            .nth(0)
+            .iter().find(|(_, v)| ***v == *value)
             .map(|(k, _)| k.clone())
         {
             self.enabled_by_key.remove(&key);

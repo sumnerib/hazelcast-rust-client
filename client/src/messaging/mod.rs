@@ -3,7 +3,7 @@ use std::net::SocketAddr;
 use derive_more::Display;
 use uuid::Uuid;
 
-use crate::codec::{Reader, Writer};
+use crate::codec::Writer;
 use crate::remote::message::{Message, Frame};
 
 pub(crate) mod authentication;
@@ -95,66 +95,6 @@ mod tests {
 
     use super::*;
 
-    // #[test]
-    // fn should_write_and_read_address() {
-    //     let address = Address {
-    //         host: "localhost".to_string(),
-    //         port: 5701,
-    //     };
-    //
-    //     let mut writeable = BytesMut::new();
-    //     address.write_to(&mut writeable);
-    //
-    //     let readable = &mut writeable.to_bytes();
-    //     assert_eq!(Address::read_from(readable), address);
-    // }
-    //
-    // #[test]
-    // fn should_read_cluster_member() {
-    //     let address = Address {
-    //         host: "localhost".to_string(),
-    //         port: 5701,
-    //     };
-    //     let id = "id";
-    //     let lite = true;
-    //
-    //     let writeable = &mut BytesMut::new();
-    //     address.write_to(writeable);
-    //     id.write_to(writeable);
-    //     lite.write_to(writeable);
-    //     0u32.write_to(writeable);
-    //
-    //     let readable = &mut writeable.to_bytes();
-    //     assert_eq!(
-    //         ClusterMember::read_from(readable),
-    //         ClusterMember {
-    //             address,
-    //             id: id.to_string(),
-    //             lite,
-    //             attributes: vec!(),
-    //         }
-    //     );
-    // }
-    //
-    // #[test]
-    // fn should_read_attribute() {
-    //     let key = "key";
-    //     let value = "value";
-    //
-    //     let writeable = &mut BytesMut::new();
-    //     key.write_to(writeable);
-    //     value.write_to(writeable);
-    //
-    //     let readable = &mut writeable.to_bytes();
-    //     assert_eq!(
-    //         AttributeEntry::read_from(readable),
-    //         AttributeEntry {
-    //             _key: key.to_string(),
-    //             _value: value.to_string(),
-    //         }
-    //     );
-    // }
-    //
     #[test]
     fn should_write_replica_timestamp_entry() {
 

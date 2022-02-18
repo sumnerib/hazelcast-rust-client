@@ -204,7 +204,7 @@ fn read_from_body(data: &Data) -> TokenStream {
     }
 }
 
-fn find_attribute_value(name: &str, attributes: &Vec<Attribute>) -> Option<Lit> {
+fn find_attribute_value(name: &str, attributes: &[Attribute]) -> Option<Lit> {
     attributes
         .iter()
         .map(|attribute| attribute.parse_meta().expect("unable to parse attribute!"))

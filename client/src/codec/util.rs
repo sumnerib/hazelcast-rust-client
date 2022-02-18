@@ -1,4 +1,4 @@
-use std::{path::Iter, mem};
+use std::mem;
 use std::collections::linked_list::IterMut;
 use crate::remote::message::{Message, Frame, IS_NULL_FLAG, BEGIN_DATA_STRUCTURE_FLAG, END_DATA_STRUCTURE_FLAG};
 use bytes::{BytesMut, Bytes, Buf};
@@ -10,7 +10,6 @@ use super::{Writeable, Writer, Reader, Readable};
 pub(crate) const UUID_SIZE: usize = mem::size_of::<Uuid>() + 1;
 
 pub(crate) fn encode_string(message: &mut Message, value: String) {
-    use crate::codec::Writer;
 
     let mut bytes = BytesMut::with_capacity(value.len());
     value.write_to(&mut bytes);
@@ -144,14 +143,14 @@ mod test {
             ));
         let actual = decode_nullable(
             &mut message.iter_mut().peekable(),
-            |iter: &mut Peekable<IterMut<Frame>>| -1
+            |_iter: &mut Peekable<IterMut<Frame>>| -1
         );
         assert_eq!(Some(-1), actual);
 
         let mut dummy: LinkedList<Frame> = LinkedList::new();
         let actual = decode_nullable(
             &mut dummy.iter_mut().peekable(),
-            |iter: &mut Peekable<IterMut<Frame>>| -1
+            |_iter: &mut Peekable<IterMut<Frame>>| -1
         );
         assert_eq!(None, actual);
     }

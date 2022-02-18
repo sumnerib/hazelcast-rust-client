@@ -8,11 +8,12 @@ pub mod pn_counter_get {
 
     use crate::codec::util::UUID_SIZE;
     use crate::codec::{Writer, util, custom, Reader};
-    use crate::messaging::{Address, ReplicaTimestampEntry};
+    use crate::messaging::ReplicaTimestampEntry;
     use crate::remote::message::{Frame, FIXED_FIELD_OFFSET};
     use crate::remote::message::Message;
 
     pub(crate) const REQUEST_TYPE: u32 = 0x1D0100;
+    #[cfg(test)]
     pub(crate) const RESPONSE_TYPE: u32 = 0x1D0101;
 
     #[derive(Request, Eq, PartialEq, Debug)]
@@ -60,6 +61,8 @@ pub mod pn_counter_get {
     }
 
     impl PnCounterGetResponse {
+        
+        #[cfg(test)]
         pub(crate) fn new(value: i64, replica_timestamps: Vec<ReplicaTimestampEntry>) -> Self {
             PnCounterGetResponse { value, replica_timestamps}
         }
@@ -95,11 +98,12 @@ pub mod pn_counter_add {
 
     use crate::codec::{Writer, util, custom, Reader};
     use crate::codec::util::UUID_SIZE;
-    use crate::messaging::{Address, ReplicaTimestampEntry};
+    use crate::messaging::{ReplicaTimestampEntry};
     use crate::remote::message::{Frame, FIXED_FIELD_OFFSET};
     use crate::remote::message::Message;
 
     pub(crate) const REQUEST_TYPE: u32 = 0x1D0200;
+    #[cfg(test)]
     pub(crate) const RESPONSE_TYPE: u32 = 0x1D0201;
 
     #[derive(Request, Eq, PartialEq, Debug)]
@@ -194,13 +198,14 @@ pub mod pn_counter_get_replica_count {
     use bytes::Buf;
     use bytes::BytesMut;
 
-    use crate::codec::{Writer, custom, util, Reader};
+    use crate::codec::{Writer, util, Reader};
     use crate::remote::message::FIXED_FIELD_OFFSET;
     use crate::remote::message::Frame;
     use crate::remote::message::Message;
 
 
     pub(crate) const REQUEST_TYPE: u32 = 0x1D0300;
+    #[cfg(test)]
     pub(crate) const RESPONSE_TYPE: u32 = 0x1D0301;
 
     #[derive(Request, Eq, PartialEq, Debug)]
@@ -257,12 +262,12 @@ pub mod pn_counter_get_replica_count {
 
 #[cfg(test)]
 mod tests {
-    use std::{ops::Deref, mem};
+    use std::mem;
 
-    use bytes::{Buf, BytesMut};
+    use bytes::BytesMut;
     use uuid::Uuid;
 
-    use crate::{codec::{Reader, Writer, custom}, remote::message::{DEFAULT_FLAGS, Frame, self, Message}, messaging::{Address, pn_counter::{pn_counter_get::PnCounterGetResponse, pn_counter_add::PnCounterAddResponse, pn_counter_get_replica_count::PnCounterGetReplicaCountResponse}}};
+    use crate::{codec::{Writer, custom}, remote::message::{DEFAULT_FLAGS, Frame, Message}, messaging::pn_counter::{pn_counter_get::PnCounterGetResponse, pn_counter_add::PnCounterAddResponse, pn_counter_get_replica_count::PnCounterGetReplicaCountResponse}};
 
     use super::{pn_counter_get::{PnCounterGetRequest, self}, pn_counter_add::{PnCounterAddRequest, self}, pn_counter_get_replica_count::{self, PnCounterGetReplicaCountRequest}};
 

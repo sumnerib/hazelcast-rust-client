@@ -1,12 +1,12 @@
 use std::error::Error;
 
-use log::{debug, info, LevelFilter};
+use log::{info, LevelFilter};
 use log4rs::{
     append::console::ConsoleAppender,
     config::{Appender, Config, Root},
 };
 use rand::{distributions::Alphanumeric, thread_rng, Rng};
-use tokio;
+
 
 use hazelcast_rust_client::HazelcastClient;
 

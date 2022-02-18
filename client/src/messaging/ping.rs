@@ -28,17 +28,17 @@ pub(crate) fn encode_request(id: u64, _request: PingRequest, mut initial_frame: 
 #[r#type = 0x000B01]
 pub(crate) struct PingResponse {}
 
-pub(crate) fn decode_response(message: Message) -> PingResponse {
+pub(crate) fn decode_response(_message: Message) -> PingResponse {
     PingResponse {}
 }
 
 #[cfg(test)]
 mod tests {
-    use bytes::{Buf, BytesMut};
+    
 
-    use crate::codec::{Reader, Writer};
+    
 
-    use super::*;
+    
 
     #[test]
     fn test_ping_encode_request() {

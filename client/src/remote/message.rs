@@ -1,9 +1,9 @@
 use bytes::{Bytes, BytesMut, Buf};
 use std::collections::LinkedList;
 use std::convert::TryInto;
-use std::collections::linked_list::{Iter, IntoIter, IterMut};
+use std::collections::linked_list::{Iter, IterMut};
 use std::mem;
-use crate::codec::{Readable, Writer};
+use crate::codec::Writer;
 use crate::messaging::{Request, Response};
 use crate::{HazelcastClientError, TryFrom};
 use crate::messaging::error::Exception;
@@ -132,7 +132,10 @@ impl Frame {
         Frame { content, flags, r#type: 0, id: 0, is_first: false }
     }
 
+    #[cfg(test)]
     pub(crate) fn from(mut content: BytesMut, is_first: bool) -> Self {
+        use crate::codec::Readable;
+
 
         let flags = content.split_to(FLAGS_LENGTH).to_bytes().read_u16();
         let mut frame: Frame;
@@ -168,10 +171,12 @@ impl Frame {
         Frame { content, flags, r#type: message_type, id: correlation_id, is_first: true }
     }
 
+    #[cfg(test)]
     pub(crate) fn is_end_frame(&self) -> bool {
         is_flag_set(self.flags, END_DATA_STRUCTURE_FLAG)
     }
 
+    #[cfg(test)]
     pub(crate) fn is_begin_frame(&self) -> bool {
         is_flag_set(self.flags, BEGIN_DATA_STRUCTURE_FLAG)
     }
@@ -185,25 +190,13 @@ impl Frame {
     /// # Panics
     ///
     /// Panics if is_first() for this Frame returns false
+    #[cfg(test)]
     pub(crate) fn id(&self) -> u64 {
         if !self.is_first {
             panic!("Frame.id() can only be used on the 'first frame' of a message");
         }
 
         self.id
-    }
-
-    /// Returns the message tyep iff this is the first frame
-    ///
-    /// # Panics
-    ///
-    /// Panics if is_first() for this Frame returns false
-    pub(crate) fn r#type(&self) -> u32 {
-        if !self.is_first {
-            panic!("Frame.r#type() can only be used on the 'first frame' of a message");
-        }
-
-        self.r#type
     }
 
     pub(crate) fn payload(&self, is_final: bool) -> Bytes {
@@ -239,7 +232,7 @@ pub(crate) fn is_flag_set(flags: u16, mask: u16) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use crate::codec::Reader;
+    
     use super::*;
 
     #[test]
@@ -377,9 +370,9 @@ mod tests {
 
         let mut content = BytesMut::new();
         content.extend_from_slice(&[1, 2, 3, 4]);
-        let mut message = Message::new(1, 0,Frame::new(content, DEFAULT_FLAGS));
+        let message = Message::new(1, 0,Frame::new(content, DEFAULT_FLAGS));
         match message.iter().next() {
-            Some(f) => assert!(true),
+            Some(_f) => assert!(true),
             None => assert!(false)
         }
     }
@@ -396,32 +389,6 @@ mod tests {
         let expected = Frame { content, flags: 0xE000, r#type: 0x1D0100, id: 1, is_first: true };
 
         assert_eq!(expected, Frame::initial_frame(0xE000, 0x1D0100, 1));
-    }
-
-    #[test]
-    fn test_frame_id() {
-        let frame = Frame::initial_frame(DEFAULT_FLAGS, 1, 369);
-        assert_eq!(369, frame.id());
-    }
-
-    #[test]
-    #[should_panic]
-    fn test_frame_id_panic() {
-        let frame = Frame::new(BytesMut::new(), DEFAULT_FLAGS);
-        frame.id();
-    }
-
-    #[test]
-    fn test_frame_type() {
-        let frame = Frame::initial_frame(DEFAULT_FLAGS, 1, 369);
-        assert_eq!(1, frame.r#type());
-    }
-
-    #[test]
-    #[should_panic]
-    fn test_frame_type_panic() {
-        let frame = Frame::new(BytesMut::new(), DEFAULT_FLAGS);
-        frame.r#type();
     }
 
     #[derive(Request, Response, Eq, PartialEq, Debug)]
