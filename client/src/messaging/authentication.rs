@@ -125,10 +125,12 @@ pub(crate) fn decode_response(mut message: Message) -> AuthenticationResponse {
         .content();
     initial_content.advance(FIXED_FIELD_OFFSET);
     let status = u8::read_from(&mut initial_content);
-    let member_uuid = Uuid::read_from(&mut initial_content);
+    let member_uuid = util::decode_uuid(&mut initial_content)
+            .expect("Received auth response with null member UUID!");
     let serialization_version = u8::read_from(&mut initial_content);
     let partition_count = i32::read_from(&mut initial_content);
-    let cluster_id = Uuid::read_from(&mut initial_content);
+    let cluster_id = util::decode_uuid(&mut initial_content)
+            .expect("Received auth response wiht null cluster UUID!");
     let failover_supported = bool::read_from(&mut initial_content);
     let address = util::decode_nullable(&mut iter, custom::decode_address);
     let hz_server_version = util::decode_string(&mut iter);
@@ -149,62 +151,11 @@ pub(crate) fn decode_response(mut message: Message) -> AuthenticationResponse {
 mod tests {
     use bytes::{Buf, BytesMut};
 
+    use crate::codec::util::UUID_SIZE;
     use crate::codec::{Reader, Writer};
     use crate::remote::message::{BEGIN_DATA_STRUCTURE_FLAG, DEFAULT_FLAGS, END_DATA_STRUCTURE_FLAG};
 
     use super::*;
-
-    // #[test]
-    // fn should_write_authentication_request() {
-    //     let request = AuthenticationRequest::new(1, "username", "password", "Rust", "1.0.0");
-    //
-    //     let mut writeable = BytesMut::new();
-    //     request.write_to(&mut writeable);
-    //
-    //     let readable = &mut writeable.to_bytes();
-    //     Uuid::read_from(readable);
-    //     assert_eq!(u8::read_from(readable), request.serialization_version);
-    //     assert_eq!(String::read_from(readable), request.username);
-    //     assert_eq!(String::read_from(readable), request.password);
-    //     assert_eq!(bool::read_from(readable), true);
-    //     assert_eq!(bool::read_from(readable), true);
-    //     assert_eq!(bool::read_from(readable), true);
-    //     assert_eq!(String::read_from(readable), request.client_type);
-    //     assert_eq!(String::read_from(readable), request.client_version);
-    // }
-
-    // #[test]
-    // fn should_read_authentication_response() {
-    //     let status = 0u8;
-    //     let address = Some(Address {
-    //         host: "localhost".to_string(),
-    //         port: 5701,
-    //     });
-    //     let id = Some("id");
-    //     let owner_id = Some("owner-id");
-    //     let protocol_version = 1;
-    //
-    //     let writeable = &mut BytesMut::new();
-    //     status.write_to(writeable);
-    //     address.write_to(writeable);
-    //     id.write_to(writeable);
-    //     owner_id.write_to(writeable);
-    //     protocol_version.write_to(writeable);
-    //     true.write_to(writeable);
-    //
-    //     let readable = &mut writeable.to_bytes();
-    //     assert_eq!(
-    //         AuthenticationResponse::read_from(readable),
-    //         AuthenticationResponse {
-    //             status,
-    //             address,
-    //             id: id.map(str::to_string),
-    //             owner_id: owner_id.map(str::to_string),
-    //             _serialization_version: protocol_version,
-    //             _unregistered_cluster_members: None,
-    //         }
-    //     );
-    // }
 
     #[test]
     fn test_encode_request() {
@@ -242,21 +193,21 @@ mod tests {
         let mut fields = BytesMut::with_capacity(
             mem::size_of::<u8>()    // backup ack count
                 + mem::size_of::<u8>()      // status
-                + mem::size_of::<Uuid>()    // member UUID
+                + UUID_SIZE    // member UUID
                 + mem::size_of::<u8>()      // serialization version
                 + mem::size_of::<i32>()      // partition count
-                + mem::size_of::<Uuid>()      // cluster id
+                + UUID_SIZE      // cluster id
                 + mem::size_of::<bool>()      // failover supported
         );
 
         0u8.write_to(&mut fields);
         status.write_to(&mut fields);
         let member_uuid = Uuid::new_v4();
-        member_uuid.write_to(&mut fields);
+        util::encode_uuid(&mut fields, member_uuid);
         1u8.write_to(&mut fields);
         271.write_to(&mut fields);
         let cluster_id = Uuid::new_v4();
-        cluster_id.write_to(&mut fields);
+        util::encode_uuid(&mut fields, cluster_id);
         false.write_to(&mut fields);
         initial_frame.append_content(fields);
         let mut message = Message::new(1, RESPONSE_TYPE, initial_frame);

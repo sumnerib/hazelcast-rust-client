@@ -1,6 +1,7 @@
 use std::net::SocketAddr;
 
 use derive_more::Display;
+use uuid::Uuid;
 
 use crate::codec::{Reader, Writer};
 use crate::remote::message::{Message, Frame};
@@ -66,11 +67,24 @@ pub(crate) struct AttributeEntry {
     _value: String,
 }
 
-// #[derive(Writer, Reader, Eq, PartialEq, Debug, Clone)]
-#[derive(Writer, Eq, PartialEq, Debug, Clone)]
+#[derive(Writer, Reader, Eq, PartialEq, Debug, Clone)]
 pub(crate) struct ReplicaTimestampEntry {
-    key: String,
+    key: Uuid,
     value: i64,
+}
+
+impl ReplicaTimestampEntry {
+    pub(crate) fn new(key: Uuid, value: i64) -> Self {
+        ReplicaTimestampEntry { key, value}
+    }
+
+    pub(crate) fn key(&self) -> Uuid {
+        self.key
+    }
+
+    pub(crate) fn value(&self) -> i64 {
+        self.value
+    }
 }
 
 #[cfg(test)]
@@ -141,37 +155,36 @@ mod tests {
     //     );
     // }
     //
-    // #[test]
-    // fn should_write_replica_timestamp_entry() {
-    //     let replica_timestamp = ReplicaTimestampEntry {
-    //         key: "key".to_string(),
-    //         value: 69,
-    //     };
-    //
-    //     let writeable = &mut BytesMut::new();
-    //     replica_timestamp.write_to(writeable);
-    //
-    //     let readable = &mut writeable.to_bytes();
-    //     assert_eq!(String::read_from(readable), replica_timestamp.key);
-    //     assert_eq!(i64::read_from(readable), replica_timestamp.value);
-    // }
-    //
-    // #[test]
-    // fn should_read_replica_timestamp_entry() {
-    //     let key = "key";
-    //     let value = 12;
-    //
-    //     let writeable = &mut BytesMut::new();
-    //     key.write_to(writeable);
-    //     value.write_to(writeable);
-    //
-    //     let readable = &mut writeable.to_bytes();
-    //     assert_eq!(
-    //         ReplicaTimestampEntry::read_from(readable),
-    //         ReplicaTimestampEntry {
-    //             key: key.to_string(),
-    //             value,
-    //         }
-    //     );
-    // }
+    #[test]
+    fn should_write_replica_timestamp_entry() {
+
+        let key = Uuid::new_v4();
+        let replica_timestamp = ReplicaTimestampEntry {
+            key,
+            value: 69,
+        };
+    
+        let writeable = &mut BytesMut::new();
+        replica_timestamp.write_to(writeable);
+    
+        let readable = &mut writeable.to_bytes();
+        assert_eq!(Uuid::read_from(readable), replica_timestamp.key);
+        assert_eq!(i64::read_from(readable), replica_timestamp.value);
+    }
+    
+    #[test]
+    fn should_read_replica_timestamp_entry() {
+        let key = Uuid::new_v4();
+        let value = 12;
+    
+        let writeable = &mut BytesMut::new();
+        key.write_to(writeable);
+        value.write_to(writeable);
+    
+        let readable = &mut writeable.to_bytes();
+        assert_eq!(
+            ReplicaTimestampEntry::read_from(readable),
+            ReplicaTimestampEntry { key, value }
+        );
+    }
 }

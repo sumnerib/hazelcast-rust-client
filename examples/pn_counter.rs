@@ -16,16 +16,16 @@ async fn main() -> Result<(), Box<dyn Error + Send + Sync>> {
 
     let client = HazelcastClient::new(vec!["127.0.0.1:5701".parse().unwrap()]).await?;
 
-    // // let mut counter = client.pn_counter(&counter_name());
+    let mut counter = client.pn_counter(&counter_name());
 
-    // assert_eq!(counter.get().await?, 0);
-    // assert_eq!(counter.get_and_add(1).await?, 0);
-    // assert_eq!(counter.get_and_add(2).await?, 1);
-    // assert_eq!(counter.add_and_get(-1).await?, 2);
-    // assert_eq!(counter.get().await?, 2);
+    assert_eq!(counter.get().await?, 0);
+    assert_eq!(counter.get_and_add(1).await?, 0);
+    assert_eq!(counter.get_and_add(2).await?, 1);
+    assert_eq!(counter.add_and_get(-1).await?, 2);
+    assert_eq!(counter.get().await?, 2);
 
-    // let replica_count = counter.replica_count().await?;
-    // info!("Replica count for {}: {}", counter.name(), replica_count);
+    let replica_count = counter.replica_count().await?;
+    info!("Replica count for {}: {}", counter.name(), replica_count);
 
     Ok(())
 }

@@ -4,6 +4,7 @@ use std::{
 };
 
 use derive_more::Display;
+use log::debug;
 use crate::remote::message::Message;
 use crate::remote::message::{Frame, DEFAULT_FLAGS};
 use uuid::Uuid;
@@ -17,7 +18,7 @@ use crate::{
 
 #[derive(Display)]
 #[display(fmt = "{} - {:?}", address, member_uuid)]
-pub(in crate::remote) struct Member {
+pub(crate) struct Member {
     member_uuid: Uuid,
     cluster_uuid: Uuid,
     address: Address,
@@ -42,6 +43,7 @@ impl Member {
             "hz_client".to_string(), vec![]
         );
         let response: AuthenticationResponse = sender.send(request).await?;
+        debug!("Authenticated with member with uuid: {}", response.member_uuid);
         match AuthenticationResponse::status(&response) {
             AuthenticationStatus::Authenticated => Ok(Member {
                 member_uuid: response.member_uuid,
@@ -59,6 +61,10 @@ impl Member {
 
     pub(in crate::remote) fn address(&self) -> &Address {
         &self.address
+    }
+
+    pub(crate) fn member_uuid(&self) -> &Uuid {
+        &self.member_uuid
     }
 }
 

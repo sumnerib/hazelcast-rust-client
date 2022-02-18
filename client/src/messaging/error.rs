@@ -3,7 +3,7 @@ use bytes::Bytes;
 use crate::remote::message::Message;
 
 #[derive(Response, Eq, PartialEq)]
-#[r#type = 0x6D]
+#[r#type = 0x0]
 pub(crate) struct Exception {
     code: i32,
     class_name: String,

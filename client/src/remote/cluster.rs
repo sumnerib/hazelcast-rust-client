@@ -91,6 +91,13 @@ impl Cluster {
         formatted.push_str("]\n");
         formatted
     }
+
+    pub(crate) async fn get_member_by(&self, address: &Address) -> Result<Arc<Member>> {
+        match self.members.get_by(address).await {
+            Some(member) => Ok(member),
+            None => Err(ClusterNonOperational)
+        }
+    }
 }
 
 const PING_INTERVAL: Duration = Duration::from_secs(300);

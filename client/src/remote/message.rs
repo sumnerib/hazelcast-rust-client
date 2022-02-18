@@ -1,14 +1,12 @@
 use bytes::{Bytes, BytesMut, Buf};
 use std::collections::LinkedList;
-use std::convert::{Infallible, TryInto};
-use std::cmp::Ordering;
+use std::convert::TryInto;
 use std::collections::linked_list::{Iter, IntoIter, IterMut};
 use std::mem;
 use crate::codec::{Readable, Writer};
 use crate::messaging::{Request, Response};
 use crate::{HazelcastClientError, TryFrom};
 use crate::messaging::error::Exception;
-use crate::codec::Reader;
 
 pub(crate) const DEFAULT_FLAGS: u16 = 0;
 pub(crate) const BEGIN_FRAGMENT_FLAG: u16 = 1 << 15;

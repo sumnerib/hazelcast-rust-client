@@ -1,11 +1,13 @@
-use std::path::Iter;
+use std::{path::Iter, mem};
 use std::collections::linked_list::IterMut;
 use crate::remote::message::{Message, Frame, IS_NULL_FLAG, BEGIN_DATA_STRUCTURE_FLAG, END_DATA_STRUCTURE_FLAG};
 use bytes::{BytesMut, Bytes, Buf};
 use uuid::Uuid;
 use std::iter::Peekable;
 
-use super::{Writeable, Writer, Reader};
+use super::{Writeable, Writer, Reader, Readable};
+
+pub(crate) const UUID_SIZE: usize = mem::size_of::<Uuid>() + 1;
 
 pub(crate) fn encode_string(message: &mut Message, value: String) {
     use crate::codec::Writer;
@@ -58,6 +60,19 @@ pub(crate) fn encode_uuid(writeable: &mut dyn Writeable, uuid: Uuid) {
     lsb.write_to(writeable);
 }
 
+pub(crate) fn decode_uuid(readable: &mut dyn Readable) -> Option<Uuid> {
+    if bool::read_from(readable) {      // is null?
+        return None
+    }
+
+    let lsb = u64::read_from(readable);
+    let msb = u64::read_from(readable);
+    let mut writeable = BytesMut::with_capacity(mem::size_of::<Uuid>());
+    msb.write_to(&mut writeable);
+    lsb.write_to(&mut writeable);
+    Some(Uuid::read_from(&mut writeable.to_bytes()))
+}
+
 #[cfg(test)]
 mod test {
     use std::collections::linked_list::IterMut;
@@ -70,7 +85,7 @@ mod test {
     use crate::codec::util::{encode_string, encode_nullable, encode_list, decode_nullable, decode_string};
     use crate::codec::Writer;
 
-    use super::encode_uuid;
+    use super::{encode_uuid, decode_uuid};
 
     #[test]
     fn test_encode_string() {
@@ -178,5 +193,14 @@ mod test {
             ],    
             fields.to_bytes().bytes()
         );
+    }
+
+    #[test]
+    fn test_decode_uuid() {
+        let mut fields = BytesMut::with_capacity(1 + mem::size_of::<Uuid>());
+        let expected = Uuid::parse_str("11141552-8456-4b0f-aa95-559c81a19f48").unwrap();
+        encode_uuid(&mut fields, expected);
+        let actual = decode_uuid(&mut fields.to_bytes());
+        assert_eq!(expected, actual.expect("Should have UUID"));
     }
 }
